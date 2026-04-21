@@ -5,26 +5,38 @@
 
 using namespace std;
 
-// Проверка на незакрытый многострочный комментарий
+// Проверка на незакрытый/неоткрытый многострочный комментарий
 bool hasUnclosedComment(const string& code)
 {
-    size_t openCount = 0, closeCount = 0;
+    int depth = 0;
 
-    size_t pos = 0;
-    while ((pos = code.find("/*", pos)) != string::npos)
+    for (size_t i = 0; i < code.size(); i++)
     {
-        openCount++;
-        pos += 2;
+        if (code[i] == '/' && i + 1 < code.size() && code[i + 1] == '*')
+        {
+            depth++;
+            i++;
+        }
+        else if (code[i] == '*' && i + 1 < code.size() && code[i + 1] == '/')
+        {
+            depth--;
+            i++;
+
+            if (depth < 0)
+            {
+                cerr << "Ошибка: закрывающий комментарий */ без открывающего /*!\n";
+                return true;
+            }
+        }
     }
 
-    pos = 0;
-    while ((pos = code.find("*/", pos)) != string::npos)
+    if (depth > 0)
     {
-        closeCount++;
-        pos += 2;
+        cerr << "Ошибка: незакрытый многострочный комментарий!\n";
+        return true;
     }
 
-    return openCount > closeCount;
+    return false;
 }
 
 // Удаление многострочных комментариев
@@ -60,6 +72,24 @@ string trimSpaces(const string& code)
     return result;
 }
 
+// Удаление лишних пробелов между элементами кода
+string removeExtraSpaces(const string& code)
+{
+    stringstream input(code);
+    string line, result;
+
+    while (getline(input, line))
+    {
+        line = regex_replace(line, regex(R"(\s+)"), " ");
+
+        if (!result.empty())
+            result += "\n";
+        result += line;
+    }
+
+    return result;
+}
+
 // Удаление пустых строк
 string removeEmptyLines(const string& code)
 {
@@ -84,7 +114,6 @@ string preprocess(const string& code)
 {
     if (hasUnclosedComment(code))
     {
-        cerr << "Ошибка: незакрытый многострочный комментарий!\n";
         return "";
     }
 
@@ -93,52 +122,8 @@ string preprocess(const string& code)
     result = removeMultiLineComments(result);
     result = removeSingleLineComments(result);
     result = trimSpaces(result);
+    result = removeExtraSpaces(result);
     result = removeEmptyLines(result);
 
     return result;
-}
-
-int main()
-{
-    setlocale(LC_ALL, "ru");
-
-    string inputFile = "test.cpp";
-    string outputFile = "cleaned.cpp";
-
-    ifstream in(inputFile);
-    if (!in)
-    {
-        cerr << "Ошибка: не удалось открыть входной файл!\n";
-        return 1;
-    }
-
-    stringstream buffer;
-    buffer << in.rdbuf();
-    string code = buffer.str();
-    in.close();
-
-    cout << "Файл успешно прочитан.\n";
-
-    string cleanedCode = preprocess(code);
-
-    if (cleanedCode.empty())
-    {
-        cerr << "Обработка прервана из-за ошибки.\n";
-        return 1;
-    }
-
-    ofstream out(outputFile);
-    if (!out)
-    {
-        cerr << "Ошибка: не удалось создать выходной файл!\n";
-        return 1;
-    }
-
-    out << cleanedCode;
-    out.close();
-
-    cout << "Файл успешно обработан!\n";
-    cout << "Результат записан в: " << outputFile << endl;
-
-    return 0;
 }
