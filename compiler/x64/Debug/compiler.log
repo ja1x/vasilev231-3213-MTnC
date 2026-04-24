@@ -1,2 +1,2 @@
-﻿  main.cpp
-  compiler.vcxproj -> D:\Учёба МПУ\МТиК\Project1\x64\Debug\compiler.exe
+﻿  lexer.cpp
+LINK : fatal error LNK1104: не удается открыть файл "D:\Учёба МПУ\МТиК\Project1\x64\Debug\compiler.exe"

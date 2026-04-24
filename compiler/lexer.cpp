@@ -7,6 +7,12 @@
 
 using namespace std;
 
+static const unordered_set<string> ALL_TYPES =
+{
+    "int", "float", "double", "long", "short", "unsigned",
+    "string", "bool", "char", "void"
+};
+
 // Таблицы
 // Ключевые слова
 static const unordered_set<string> KEYWORDS =
@@ -143,7 +149,7 @@ void Lexer::readPreprocessor()
 void Lexer::readString()
 {
     int startLine = line;
-    pos++;
+    pos++; // пропускаем открывающую "
     string val = "\"";
     bool closed = false;
 
@@ -165,21 +171,31 @@ void Lexer::readString()
             break;
         }
         if (c == '\n')
+        {
+            // Строковый литерал не может перейти на новую строку — сразу ошибка
+            errors.push_back({ "Незакрытый строковый литерал: " + val, startLine });
             line++;
+            pos++;
+            return; // ? выходим, не добавляем токен
+        }
         val += c;
         pos++;
     }
 
     if (!closed)
+    {
+        // Дошли до конца файла без закрывающей кавычки
         errors.push_back({ "Незакрытый строковый литерал: " + val, startLine });
-    else
-        tokens.push_back({ TokenType::CONSTANT_STRING, val, startLine });
+        return; // ? не добавляем токен
+    }
+
+    tokens.push_back({ TokenType::CONSTANT_STRING, val, startLine });
 }
 
 void Lexer::readChar()
 {
     int startLine = line;
-    pos++;
+    pos++; // пропускаем открывающую '
     string val = "'";
 
     while (pos < src.size() && src[pos] != '\'')
@@ -191,18 +207,38 @@ void Lexer::readChar()
             pos += 2;
             continue;
         }
+        if (src[pos] == '\n')
+        {
+            errors.push_back({ "Незакрытый символьный литерал: " + val, startLine });
+            line++;
+            pos++;
+            return; // ? не добавляем токен
+        }
         val += src[pos++];
     }
 
-    if (pos < src.size())
+    if (pos >= src.size())
     {
-        val += '\'';
-        pos++;
-    }
-    else
+        // Конец файла без закрывающей кавычки
         errors.push_back({ "Незакрытый символьный литерал: " + val, startLine });
+        return; // ? не добавляем токен
+    }
 
+    val += '\'';
+    pos++; // пропускаем закрывающую '
     tokens.push_back({ TokenType::CONSTANT_INT, val, startLine });
+}
+
+// Смотрит на последний добавленный токен
+static bool prevTokenIsType(const vector<Token>& tokens)
+{
+    for (int i = (int)tokens.size() - 1; i >= 0; i--)
+    {
+        if (tokens[i].type == TokenType::PREPROCESSOR) continue;
+        return tokens[i].type == TokenType::KEYWORD
+            && ALL_TYPES.count(tokens[i].value);
+    }
+    return false;
 }
 
 void Lexer::readNumber()
@@ -211,10 +247,12 @@ void Lexer::readNumber()
     size_t start = pos;
     bool hasDecimal = false;
     bool hasError = false;
+    bool hasLetters = false;
 
     while (pos < src.size())
     {
         char c = src[pos];
+
         if (isdigit((unsigned char)c))
         {
             pos++;
@@ -235,12 +273,28 @@ void Lexer::readNumber()
 
         if (isalpha((unsigned char)c) || c == '_')
         {
-            errors.push_back({ "Некорректное число: буква внутри числовой константы", startLine });
+            hasLetters = true;
             hasError = true;
             pos++;
             continue;
         }
+
         break;
+    }
+
+    if (hasLetters)
+    {
+        string val = src.substr(start, pos - start);
+
+        if (prevTokenIsType(tokens))
+            errors.push_back({
+                "Недопустимый идентификатор: \"" + val + "\" — имя переменной не может начинаться с цифры",
+                startLine });
+        else
+            errors.push_back({
+                "Некорректное числовое значение: \"" + val + "\" содержит буквы",
+                startLine });
+        return;
     }
 
     if (!hasError)

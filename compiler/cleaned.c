@@ -11,6 +11,7 @@ string lowerChars = "abcdefghijklmnopqrstuvwxyz";
 string upperChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 string digitChars = "0123456789";
 string symbolChars = "!\"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ ";
+char 2a = 't';
 string availableChars = lowerChars;
 if (useUpper)
 {
@@ -92,7 +93,7 @@ cout << "Длина слишком мала! Попробуйте ещё раз\n";
 } while (passwordLength < 8);
 do
 {
-cou1t << "Использовать заглавные буквы? (y/n): ";
+cout << "Использовать заглавные буквы? (y/n): ";
 cin >> useUpperInput;
 useUpper = (useUpperInput == 'y' || useUpperInput == 'Y');
 cout << "Использовать цифры? (y/n): ";

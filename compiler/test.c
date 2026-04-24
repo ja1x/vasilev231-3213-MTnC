@@ -18,6 +18,8 @@ string generatePassword(int length, bool useUpper, bool useDigits, bool useSymbo
     string digitChars = "0123456789";
     string symbolChars = "!\"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ ";
 
+    char 2a = 't';
+
     string availableChars = lowerChars;
 
     if (useUpper) // добавление заглавных букв
