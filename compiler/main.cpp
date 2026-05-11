@@ -1,5 +1,6 @@
 #include "preprocessor.h"
 #include "lexer.h"
+#include "parser.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -34,9 +35,13 @@ int main()
 
     cout << "\nТокенов: " << lexer.getTokens().size() << "\n";
     if (lexer.getErrors().empty())
-        cout << "Ошибок не найдено.\n";
+        cout << "Ошибок не найдено.\n\n\n\n";
     else
         printErrors(lexer.getErrors());
+
+    // Синтаксический анализатор
+    Parser parser(lexer.getTokens());
+    parser.parse();
 
     return 0;
 }
