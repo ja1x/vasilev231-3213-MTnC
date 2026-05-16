@@ -281,6 +281,7 @@ private:
 
     void addError(const string& msg, int line);
     void skipTo(initializer_list<string> stopValues);
+    void checkFunctionReturn(const FunctionDecl& fn);
 
     NodePtr parseProgram();
     NodePtr parseFunctionDecl();

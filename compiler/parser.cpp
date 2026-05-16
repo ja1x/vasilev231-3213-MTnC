@@ -285,6 +285,30 @@ void Parser::skipTo(initializer_list<string> stopValues) // пропуск токенов
     }
 }
 
+void Parser::checkFunctionReturn(const FunctionDecl& fn)
+{
+    if (fn.returnType == "void")
+        return;
+
+    if (!fn.body || fn.body->type != NodeType::BLOCK_STMT)
+        return;
+
+    const auto& stmts = static_cast<const BlockStmt&>(*fn.body).statements;
+
+    if (stmts.empty())
+    {
+        addError("Функция '" + fn.name + "': отсутствует оператор return", fn.line);
+        return;
+    }
+
+    const NodePtr& last = stmts.back();
+    if (!last || last->type != NodeType::RETURN_STMT)
+    {
+        int errLine = last ? last->line : fn.line;
+        addError("Функция '" + fn.name + "': тело функции должно завершаться оператором return", errLine);
+    }
+}
+
 // Главный метод синтаксического анализатора
 void Parser::parse()
 {
@@ -330,7 +354,15 @@ NodePtr Parser::parseProgram()
             continue;
         }
 
-        prog->functions.push_back(parseFunctionDecl());
+        if (isType(cur().value) && peek(1).type == TokenType::IDENTIFIER
+            && peek(2).value == "(")
+            prog->functions.push_back(parseFunctionDecl());
+        else
+        {
+            addError("Ожидалось объявление функции", cur().line);
+            while (!atEnd() && !match(TokenType::DELIMITER, ";")) consume();
+            if (match(TokenType::DELIMITER, ";")) consume();
+        }
     }
 
     return prog;
@@ -373,8 +405,9 @@ NodePtr Parser::parseFunctionDecl()
         skipTo({ "{" });
     }
     NodePtr body = parseBlock();
-
-    return make_shared<FunctionDecl>(retType, name, move(params), move(body), ln);
+    auto funcDecl = make_shared<FunctionDecl>(retType, name, move(params), move(body), ln);
+    checkFunctionReturn(*funcDecl);
+    return funcDecl;
 }
 
 // Разбор параметра функции
